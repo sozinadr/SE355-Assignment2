@@ -14,7 +14,6 @@ import java.io.*;
 import java.io.IOException;
 import java.util.Scanner;
 import org.apache.zookeeper.*;
-import org.apache.zookeeper.data.*;
 import org.zeromq.*;
 
 public class A {
@@ -45,10 +44,30 @@ public class A {
       // create a node to store the ip address and port of node A
       zk.create("/A", "localhost:1001".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
 
-      // retrieve the nodes ip address and port from getChildren
+      // store the ip address and port of the nodes in an array
+      String[] nodes = new String[10];
+      int numCounter = 0;
       for (String node : zk.getChildren("/", false)) {
-        System.out.println(new String(zk.getData("/" + node, false, null)));
+        nodes[numCounter] = new String(zk.getData("/" + node, false, null));
+        numCounter++;
       }
+
+      // print the ip address and port of the nodes
+      for (String node : nodes) {
+        System.out.println("I'm an IP Address: " + node);
+      }
+
+      // notify other nodes with zookeeper if any node is down or up
+      zk.exists("/A", new Watcher() {
+        @Override
+        public void process(WatchedEvent event) {
+          if (event.getType() == Event.EventType.NodeDeleted) {
+            System.out.println("Node A is down");
+          } else if (event.getType() == Event.EventType.NodeCreated) {
+            System.out.println("Node A is up");
+          }
+        }
+      });
 
       FileInputStream fis = new FileInputStream(fileName);
 

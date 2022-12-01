@@ -3,7 +3,6 @@ package com.nini.assignment2;
 
 import java.io.*;
 import org.apache.zookeeper.*;
-import org.apache.zookeeper.data.Stat;
 import org.zeromq.*;
 
 public class C {
@@ -22,20 +21,40 @@ public class C {
                 }
             });
 
-            // create a node to store the ip address and port of node A
+            // create a node to store the ip address and port of node C
             zk.create("/C", "localhost:1003".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
 
-            // retrieve the nodes ip address and port from getChildren
+            // store the ip address and port of the nodes in an array
+            String[] nodes = new String[10];
+            int numCounter = 0;
             for (String node : zk.getChildren("/", false)) {
-                System.out.println(new String(zk.getData("/" + node, false, null)));
+                nodes[numCounter] = new String(zk.getData("/" + node, false, null));
+                numCounter++;
             }
+
+            // print the ip address and port of the nodes
+            for (String node : nodes) {
+                System.out.println("I'm an IP Address: " + node);
+            }
+
+            // notify other nodes with zookeeper if any node is down or up
+            zk.exists("/C", new Watcher() {
+                @Override
+                public void process(WatchedEvent event) {
+                    if (event.getType() == Event.EventType.NodeDeleted) {
+                        System.out.println("Node C is down");
+                    } else if (event.getType() == Event.EventType.NodeCreated) {
+                        System.out.println("Node C is up");
+                    }
+                }
+            });
 
             FileOutputStream fos = new FileOutputStream("C.cpp", true);
 
             // retrieve data from A with ZMQ with thread
             int counter = 0;
             while (!Thread.currentThread().isInterrupted()) {
-                System.out.println("B is running");
+                System.out.println("C is running");
                 try {
                     byte[] reply = socket.recv(0);
                     fos.write(reply);

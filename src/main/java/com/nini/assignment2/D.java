@@ -2,10 +2,7 @@
 package com.nini.assignment2;
 
 import java.io.*;
-import java.net.*;
-import java.util.Scanner;
 import org.apache.zookeeper.*;
-import org.apache.zookeeper.data.Stat;
 import org.zeromq.*;
 
 public class D {
@@ -27,17 +24,37 @@ public class D {
             // create a node to store the ip address and port of node D
             zk.create("/D", "localhost:1004".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
 
-            // retrieve the nodes ip address and port from getChildren
+            // store the ip address and port of the nodes in an array
+            String[] nodes = new String[10];
+            int numCounter = 0;
             for (String node : zk.getChildren("/", false)) {
-                System.out.println(new String(zk.getData("/" + node, false, null)));
+                nodes[numCounter] = new String(zk.getData("/" + node, false, null));
+                numCounter++;
             }
+
+            // print the ip address and port of the nodes
+            for (String node : nodes) {
+                System.out.println("I'm an IP Address: " + node);
+            }
+
+            // notify other nodes with zookeeper if any node is down or up
+            zk.exists("/D", new Watcher() {
+                @Override
+                public void process(WatchedEvent event) {
+                    if (event.getType() == Event.EventType.NodeDeleted) {
+                        System.out.println("Node D is down");
+                    } else if (event.getType() == Event.EventType.NodeCreated) {
+                        System.out.println("Node D is up");
+                    }
+                }
+            });
 
             FileOutputStream fos = new FileOutputStream("D.cpp", true);
 
             // retrieve data from A with ZMQ with thread
             int counter = 0;
             while (!Thread.currentThread().isInterrupted()) {
-                System.out.println("B is running");
+                System.out.println("D is running");
                 try {
                     byte[] reply = socket.recv(0);
                     fos.write(reply);
