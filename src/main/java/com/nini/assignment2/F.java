@@ -24,6 +24,19 @@ public class F {
             // create a node to store the ip address and port of node F
             zk.create("/F", "localhost:1006".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
 
+            MyWatcher watcher = new MyWatcher();
+            try {
+                zk.exists("/B", watcher);
+                zk.exists("/C", watcher);
+                zk.exists("/D", watcher);
+                zk.exists("/E", watcher);
+                zk.exists("/F", watcher);
+            } catch (KeeperException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
             // store the ip address and port of the nodes in an array
             String[] nodes = new String[10];
             int numCounter = 0;
@@ -36,18 +49,6 @@ public class F {
             for (String node : nodes) {
                 System.out.println("I'm an IP Address: " + node);
             }
-
-            // notify other nodes with zookeeper if any node is down or up
-            zk.exists("/F", new Watcher() {
-                @Override
-                public void process(WatchedEvent event) {
-                    if (event.getType() == Event.EventType.NodeDeleted) {
-                        System.out.println("Node F is down");
-                    } else if (event.getType() == Event.EventType.NodeCreated) {
-                        System.out.println("Node F is up");
-                    }
-                }
-            });
 
 
             FileOutputStream fos = new FileOutputStream("F.cpp", true);
