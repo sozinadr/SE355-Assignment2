@@ -14,12 +14,12 @@ import java.io.*;
 import java.io.IOException;
 import java.util.Scanner;
 import org.apache.zookeeper.*;
-import org.apache.zookeeper.data.Stat;
+import org.apache.zookeeper.data.*;
 import org.zeromq.*;
 
 public class A {
   static int checker;
-  public static void main(String[] args) throws InterruptedException {
+  public static void main(String[] args) throws InterruptedException, KeeperException {
 
     Scanner sc = new Scanner(System.in);
     System.out.println("Enter the file name");
@@ -34,6 +34,22 @@ public class A {
       ZContext context = new ZContext();
       ZMQ.Socket socket = context.createSocket(SocketType.REP);
       socket.bind("tcp://*:1001");
+
+      ZooKeeper zk = new ZooKeeper("localhost:2181", 3000, new Watcher() {
+        @Override
+        public void process(WatchedEvent event) {
+          System.out.println("Event received: " + event);
+        }
+      });
+
+      // create a node to store the ip address and port of node A
+      zk.create("/A", "localhost:1001".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+
+      // retrieve the nodes ip address and port from getChildren
+      for (String node : zk.getChildren("/", false)) {
+        System.out.println(new String(zk.getData("/" + node, false, null)));
+      }
+
       FileInputStream fis = new FileInputStream(fileName);
 
       while (true) {

@@ -2,8 +2,6 @@
 package com.nini.assignment2;
 
 import java.io.*;
-import java.net.*;
-import java.util.Scanner;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import org.zeromq.*;
@@ -11,11 +9,27 @@ import org.zeromq.*;
 public class C {
     static int checker;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws KeeperException, InterruptedException {
         try {
             ZContext context = new ZContext();
             ZMQ.Socket socket = context.createSocket(SocketType.PULL);
             socket.bind("tcp://*:1003");
+
+            ZooKeeper zk = new ZooKeeper("localhost:2181", 3000, new Watcher() {
+                @Override
+                public void process(WatchedEvent event) {
+                    System.out.println("Event received: " + event);
+                }
+            });
+
+            // create a node to store the ip address and port of node A
+            zk.create("/C", "localhost:1003".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+
+            // retrieve the nodes ip address and port from getChildren
+            for (String node : zk.getChildren("/", false)) {
+                System.out.println(new String(zk.getData("/" + node, false, null)));
+            }
+
             FileOutputStream fos = new FileOutputStream("C.cpp", true);
 
             // retrieve data from A with ZMQ with thread
