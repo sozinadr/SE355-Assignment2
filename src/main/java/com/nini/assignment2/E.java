@@ -2,147 +2,51 @@ package com.nini.assignment2;
 
 import java.io.*;
 import java.net.*;
+import java.util.Scanner;
+import org.apache.zookeeper.*;
+import org.apache.zookeeper.data.Stat;
+import org.zeromq.*;
 
 public class E {
     static int checker;
 
     public static void main(String[] args) {
-        /*
-         * Retrieve data from A and also backup of the node before
-         */
         try {
-            ServerSocket ss = new ServerSocket(1005);
+            ZContext context = new ZContext();
+            ZMQ.Socket socket = context.createSocket(SocketType.PULL);
+            socket.bind("tcp://*:1005");
             FileOutputStream fos = new FileOutputStream("E.cpp", true);
-            FileInputStream fis = new FileInputStream("E.cpp");
-            while (true) {
+
+            // retrieve data from A with ZMQ with thread
+            int counter = 0;
+            while (!Thread.currentThread().isInterrupted()) {
+                System.out.println("B is running");
                 try {
-                    Socket s = ss.accept();
-                    retrieveData(s); // retrieve data from A
-                    retrieveBackup(s); // retrieve backup from A
-                    if (checker == -1) {
-                        fos.close();
+                    byte[] reply = socket.recv(0);
+                    fos.write(reply);
+                    fos.flush();
+                    if (reply[counter] == -1 || reply[counter] == 255) {
                         break;
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-            }
-
-            /*
-             * 
-             * SEND DATA BACK TO A
-             * 
-             */
-
-             while (true) {
-                try (ServerSocket ss2 = new ServerSocket(2005)) {
-                    Socket s = ss2.accept();
-                    System.out.println("check point 1");
-                    int byteRead2 = fis.read(); 
-                    int sizeOfData = 1024;
-                    byte[] data = new byte[sizeOfData]; 
-                    int byteCount = 0; 
-
-                    while (byteRead2 != -1) { 
-                        if (byteCount == sizeOfData) { 
-                            byteCount = 0; 
-                            break;
-                        }
-                        data[byteCount++] = (byte) byteRead2; 
-                        byteRead2 = fis.read(); 
-                    }
-
-                    sendArrayBackToA(data, s);
-
-                    if (byteRead2 == -1) { 
-                        fis.close(); 
-                        break;
-                    }
+                    counter++;
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
+            
+            // while (true) {
+            //     try {
+            //         byte[] reply = socket.recv(0);
+            //         fos.write(reply);
+            //         fos.flush();
+            //         if (reply[0] == -1 || reply[0] == 255) {
+            //             break;
+            //         }
+            //     } catch (IOException e) {
+            //         e.printStackTrace();
+            //     }
+            // }
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    static void retrieveData(Socket s) {
-        try {
-            int byteRead = 0;
-            FileOutputStream fos = new FileOutputStream("E.cpp", true);
-            BufferedInputStream bis = new BufferedInputStream(s.getInputStream());
-            for (int i = 0; i < 1024; i++) {
-                byteRead = bis.read();
-                if (byteRead == -1 || byteRead == 255) {
-                    System.out.println("check point 3");
-                    break;
-                }
-                fos.write(byteRead);
-                fos.flush();
-            }
-            if (byteRead == -1 || byteRead == 255) {
-                fos.close();
-                checker = -1;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    static void retrieveBackup(Socket s) {
-        try {
-            FileOutputStream fos = new FileOutputStream("Dbackup.cpp", true);
-            int byteRead = 0;
-            DataInputStream dis = new DataInputStream(s.getInputStream());
-            if (dis.readUTF().equals("backup")) {
-                while (true) {
-                    try {
-                        BufferedInputStream bis = new BufferedInputStream(s.getInputStream());
-                        for (int i = 0; i < 1024; i++) {
-                            byteRead = bis.read();
-                            if (byteRead == -1 || byteRead == 255) {
-                                System.out.println("check point 2");
-                                break;
-                            }
-                            fos.write(byteRead);
-                            fos.flush();
-                        }
-                        if (byteRead == -1 || byteRead == 255) {
-                            fos.close();
-                            break;
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    static void sendArrayBackToA(byte[] data, Socket s) {
-        try {
-            // System.out.println("did connect or no??");
-            DataInputStream dis = new DataInputStream(s.getInputStream());
-            BufferedOutputStream bos = new BufferedOutputStream(s.getOutputStream());
-            if (dis.readUTF().equals("retrieve")) {
-                for (byte arr : data) {
-                    if (arr == 0) {
-                        bos.write(-1);
-                        bos.flush();
-                        break;
-                    }
-                    // System.out.println(arr);
-                    bos.write(arr);
-                    bos.flush();
-                }
-                bos.close();
-            }
         } catch (IOException e) {
             e.printStackTrace();
         }
